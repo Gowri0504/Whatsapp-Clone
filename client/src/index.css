@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
@@ -24,4 +22,15 @@ body {
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+@theme {
+  --color-whatsapp-dark: #0b141a;
+  --color-whatsapp-sidebar: #111b21;
+  --color-whatsapp-header: #202c33;
+  --color-whatsapp-sent: #005c4b;
+  --color-whatsapp-received: #202c33;
+  --color-whatsapp-green: #00a884;
+  --color-whatsapp-gray: #8696a0;
+  --color-whatsapp-light: #d1d7db;
 }
