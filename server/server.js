@@ -9,13 +9,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"],
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 app.use(express.json());
 
 // Database connection
@@ -52,6 +55,10 @@ io.on("connection", (socket) => {
 
   socket.on("stop_typing", (data) => {
     socket.to(data.receiverId).emit("hide_typing", data);
+  });
+
+  socket.on("mark_seen", (data) => {
+    socket.to(data.senderId).emit("message_seen", data);
   });
 
   socket.on("disconnect", () => {

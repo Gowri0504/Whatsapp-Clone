@@ -30,6 +30,12 @@ const ChatWindow = () => {
       socket.on("receive_message", (data) => {
         if (selectedChat && data.senderId === selectedChat._id) {
           setMessages((prev) => [...prev, data]);
+          // Mark as seen if chat is open
+          socket.emit("mark_seen", {
+            messageId: data._id,
+            senderId: data.senderId,
+            receiverId: user._id,
+          });
         }
       });
 
@@ -40,9 +46,18 @@ const ChatWindow = () => {
         }
       });
 
+      socket.on("message_seen", (data) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg._id === data.messageId ? { ...msg, status: "seen" } : msg
+          )
+        );
+      });
+
       return () => {
         socket.off("receive_message");
         socket.off("display_typing");
+        socket.off("message_seen");
       };
     }
   }, [socket, selectedChat]);

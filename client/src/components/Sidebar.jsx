@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { Search, MessageSquare, MoreVertical, LogOut } from "lucide-react";
+import { Search, MessageSquare, MoreVertical, LogOut, X, User } from "lucide-react";
 import { useChat } from "../context/ChatContext";
 import API from "../services/api";
 
 const Sidebar = () => {
-  const { user, logout, setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChat();
+  const { user, setUser, logout, setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChat();
   const [search, setSearch] = useState("");
   const [allUsers, setAllUsers] = useState([]);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    username: user?.username || "",
+    avatar: user?.avatar || "",
+  });
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await API.put("/users/profile", profileData);
+      setUser(data);
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      setShowProfile(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -40,12 +57,13 @@ const Sidebar = () => {
 
   return (
     <div className="flex flex-col w-[30%] h-full bg-whatsapp-sidebar border-r border-whatsapp-header">
-      {/* Header */}
+      {/* Profile Header */}
       <div className="flex items-center justify-between p-4 bg-whatsapp-header h-[60px]">
         <img
           src={user?.avatar}
           alt="Profile"
           className="w-10 h-10 rounded-full cursor-pointer"
+          onClick={() => setShowProfile(true)}
         />
         <div className="flex items-center space-x-4 text-whatsapp-gray">
           <MessageSquare className="w-6 h-6 cursor-pointer" />
@@ -53,6 +71,75 @@ const Sidebar = () => {
           <LogOut className="w-6 h-6 cursor-pointer" onClick={logout} />
         </div>
       </div>
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <div className="absolute inset-0 bg-whatsapp-sidebar z-50 flex flex-col">
+          <div className="bg-whatsapp-header h-[110px] flex items-end p-4 text-white">
+            <div className="flex items-center mb-2">
+              <X
+                className="w-6 h-6 cursor-pointer mr-6"
+                onClick={() => setShowProfile(false)}
+              />
+              <span className="text-lg font-medium">Profile</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-whatsapp-dark p-6 flex flex-col items-center">
+            <div className="relative group mb-8">
+              <img
+                src={profileData.avatar}
+                alt="Profile"
+                className="w-48 h-48 rounded-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs uppercase text-center p-4">
+                <User className="w-8 h-8 mb-2" />
+                Change Profile Photo
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="w-full space-y-8">
+              <div>
+                <label className="block text-whatsapp-green text-sm mb-4">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
+                  value={profileData.username}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, username: e.target.value })
+                  }
+                />
+                <p className="text-whatsapp-gray text-xs mt-4 leading-relaxed">
+                  This is not your username or pin. This name will be visible to
+                  your WhatsApp contacts.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-whatsapp-green text-sm mb-4">
+                  Avatar URL
+                </label>
+                <input
+                  type="text"
+                  className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
+                  value={profileData.avatar}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, avatar: e.target.value })
+                  }
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-whatsapp-green text-whatsapp-dark font-bold py-3 rounded shadow-md hover:bg-opacity-90 transition"
+              >
+                Save Profile
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="p-2 bg-whatsapp-sidebar">
