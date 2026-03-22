@@ -5,11 +5,16 @@ const API = axios.create({
 });
 
 API.interceptors.request.use((req) => {
-  const user = JSON.parse(localStorage.getItem("userInfo"));
-  if (user && user.token) {
-    req.headers.Authorization = `Bearer ${user.token}`;
+  const userInfo = localStorage.getItem("userInfo");
+  if (userInfo) {
+    const user = JSON.parse(userInfo);
+    if (user && user.token) {
+      req.headers.Authorization = `Bearer ${user.token}`;
+    }
   }
   return req;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export default API;
