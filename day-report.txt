@@ -1,0 +1,39 @@
+# WhatsApp Web Clone - Daily Development Report
+
+## Day 1: Foundation & Backend Setup
+- Initialized project structure (MERN stack).
+- Configured Express server with Socket.IO integration.
+- Connected to MongoDB with Mongoose models:
+  - User: Username, email, password hashing, avatar, status tracking.
+  - Message: Sender/receiver IDs, text content, real-time status (sent/delivered/seen).
+  - Chat: Participants tracking and last message reference.
+- Implemented core API routes:
+  - Auth: Register and Login with JWT generation.
+  - Users: Fetch contact list, update user profile.
+  - Messages: Send/fetch message history.
+  - Chats: Retrieve active chat lists for a user.
+- Integrated Socket.IO for real-time connection and room joining.
+
+## Day 2: Frontend Architecture & UI Development
+- Initialized React project with Vite and Tailwind CSS.
+- Configured Axios interceptor for automatic JWT header injection.
+- Built core components:
+  - Sidebar: Dynamic chat list and user search.
+  - ChatWindow: Header, scrollable message area, and input.
+  - MessageBubble: Conditional styling for sent vs received messages.
+- Implemented global state management via Context API (ChatContext).
+- Styled the app with WhatsApp's signature dark theme colors and custom scrollbars.
+- Resolved dependency issues related to Tailwind CSS v4 and PostCSS.
+
+## Day 3: Feature Enhancement & UX Polish
+- Resolved CORS issues allowing cross-origin communication from dynamic dev ports.
+- Implemented Advanced Sidebar Navigation:
+  - Vertical tab bar for Chats, Status, Channels, Communities, and Settings.
+- Added Floating New Chat Button:
+  - Implemented the green "+" button and a dedicated New Chat drawer for discovering contacts.
+- Developed Profile Management:
+  - Interactive profile drawer allowing users to update display names and avatars.
+- Enhanced Real-time Messaging:
+  - Implemented "Message Seen" (blue double checks) status via Socket.IO.
+  - Added real-time "Typing..." indicators.
+- Final code audit and push to GitHub repository.

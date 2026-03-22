@@ -1,0 +1,35 @@
+# WhatsApp Web Clone - Application Overview
+
+## 🚀 About the Application
+A full-stack WhatsApp Web clone built using the MERN stack (MongoDB, Express.js, React.js, Node.js). This application delivers a high-fidelity real-time messaging experience with a UI and UX modeled closely after the modern WhatsApp Web desktop interface.
+
+## 🛠️ Technology Stack
+- **Frontend**: React.js (Vite), Tailwind CSS v4, Lucide-React Icons, Axios.
+- **Backend**: Node.js, Express.js.
+- **Real-time**: Socket.IO (WebSockets).
+- **Database**: MongoDB (Mongoose).
+- **Authentication**: JSON Web Token (JWT) with BcryptJS for password hashing.
+- **State Management**: React Context API.
+
+## ✨ Core Features
+- **Real-time Messaging**: Instant message delivery and receipt via Socket.IO.
+- **Authentic WhatsApp UI**: 
+  - Sidebar layout (30/70 split).
+  - Vertical Navigation Bar: Chats, Status, Channels, Communities, Settings.
+  - Floating New Chat Button: Opens a contacts drawer to start conversations.
+- **User Authentication**: Secure registration and login with JWT.
+- **Profile Management**: 
+  - Edit your display name.
+  - Change your profile picture (Avatar URL).
+- **Chat UX**:
+  - Search/Filter chats.
+  - New Chat Drawer: Discover and start chats with any registered user.
+  - Real-time Message Status: Sent (single check), Delivered (double check), Seen (blue double check).
+  - Typing Indicators: See when your contacts are typing in real-time.
+  - Emoji Picker: Integrated emoji support for all messages.
+  - Auto-scroll: Automatically scrolls to the newest message.
+- **Responsive Design**: Clean and functional dark theme across all components.
+
+## 📦 Project Structure
+- **/server**: Express API, Mongoose models, Socket.IO logic, JWT middleware.
+- **/client**: React components, Context API, Tailwind CSS styles, API services.
