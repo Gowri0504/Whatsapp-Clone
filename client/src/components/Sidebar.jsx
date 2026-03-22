@@ -200,8 +200,11 @@ const Sidebar = () => {
           <div className="flex-1 overflow-y-auto bg-whatsapp-dark">
             <div className="p-4">
                <div className="flex items-center bg-whatsapp-header rounded-lg px-3 py-1.5">
+                <label htmlFor="new-chat-search" className="sr-only">Search contacts</label>
                 <Search className="w-5 h-5 text-whatsapp-gray mr-3" />
                 <input
+                  id="new-chat-search"
+                  name="new-chat-search"
                   type="text"
                   placeholder="Search name or email"
                   className="bg-transparent border-none outline-none text-white text-sm w-full"
@@ -288,9 +291,12 @@ const Sidebar = () => {
             </div>
             <div className="flex-1 overflow-y-auto bg-whatsapp-dark">
               <div className="p-6">
+                <label htmlFor="group-name" className="block text-whatsapp-green text-sm mb-2">Group Name</label>
                 <input
+                  id="group-name"
+                  name="group-name"
                   type="text"
-                  placeholder="Group Name"
+                  placeholder="Enter group name"
                   className="w-full bg-transparent border-b border-whatsapp-green outline-none text-white pb-2 mb-8"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
@@ -351,14 +357,20 @@ const Sidebar = () => {
                    <Plus className="w-12 h-12 text-whatsapp-gray" />
                 </div>
               )}
+              <label htmlFor="status-image-url" className="block text-whatsapp-green text-sm mb-2">Image URL</label>
               <input
+                id="status-image-url"
+                name="status-image-url"
                 type="text"
                 placeholder="Paste Image URL"
                 className="w-full bg-whatsapp-sidebar border-none text-white rounded p-3 mb-4"
                 value={statusImage}
                 onChange={(e) => setStatusUploadImage(e.target.value)}
               />
+              <label htmlFor="status-caption" className="block text-whatsapp-green text-sm mb-2">Caption</label>
               <input
+                id="status-caption"
+                name="status-caption"
                 type="text"
                 placeholder="Add a caption..."
                 className="w-full bg-transparent border-b border-whatsapp-gray focus:border-whatsapp-green outline-none text-white pb-2"
@@ -404,10 +416,12 @@ const Sidebar = () => {
 
             <form onSubmit={handleUpdateProfile} className="w-full space-y-8">
               <div>
-                <label className="block text-whatsapp-green text-sm mb-4">
+                <label htmlFor="profile-username" className="block text-whatsapp-green text-sm mb-4">
                   Your Name
                 </label>
                 <input
+                  id="profile-username"
+                  name="profile-username"
                   type="text"
                   className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
                   value={profileData.username}
@@ -422,10 +436,12 @@ const Sidebar = () => {
               </div>
 
               <div>
-                <label className="block text-whatsapp-green text-sm mb-4">
+                <label htmlFor="profile-avatar" className="block text-whatsapp-green text-sm mb-4">
                   Avatar URL
                 </label>
                 <input
+                  id="profile-avatar"
+                  name="profile-avatar"
                   type="text"
                   className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
                   value={profileData.avatar}
@@ -449,8 +465,11 @@ const Sidebar = () => {
       {/* Search */}
       <div className="p-2 bg-whatsapp-sidebar">
         <div className="flex items-center bg-whatsapp-header rounded-lg px-3 py-1.5">
+          <label htmlFor="sidebar-search" className="sr-only">Search chats</label>
           <Search className="w-5 h-5 text-whatsapp-gray mr-3" />
           <input
+            id="sidebar-search"
+            name="sidebar-search"
             type="text"
             placeholder="Search or start new chat"
             className="bg-transparent border-none outline-none text-white text-sm w-full"

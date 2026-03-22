@@ -32,6 +32,10 @@ A full-stack WhatsApp Web clone built using the MERN stack (MongoDB, Express.js,
   - Emoji Picker: Integrated emoji support for all messages.
   - Auto-scroll: Automatically scrolls to the newest message.
 - **Responsive Design**: Clean and functional dark theme across all components.
+- **Accessibility & Best Practices**:
+  - Semantic HTML structure.
+  - Fully accessible forms with unique IDs, names, and associated labels for screen readers and browser autofill.
+  - ARIA attributes where appropriate.
 
 ## 📦 Project Structure
 - **/server**: Express API, Mongoose models, Socket.IO logic, JWT middleware.

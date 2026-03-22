@@ -44,4 +44,6 @@
   - Frontend Status upload drawer and viewing interface.
 - Added Contextual Menus:
   - Functional 3-dots menu in both Sidebar and Chat Window with options like "Clear Chat", "New Group", and "Contact Info".
+- Accessibility & Best Practices:
+  - Fixed form field accessibility by adding unique IDs, name attributes, and associated labels across all forms (Login, Profile, New Group, Status Upload, and Message Input).
 - Final code audit and push to GitHub repository.

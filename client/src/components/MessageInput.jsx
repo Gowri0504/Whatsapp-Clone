@@ -54,7 +54,10 @@ const MessageInput = ({ onSend, onTyping }) => {
       </button>
 
       <form onSubmit={handleSubmit} className="flex-1">
+        <label htmlFor="message-input" className="sr-only">Type a message</label>
         <input
+          id="message-input"
+          name="message-input"
           type="text"
           placeholder="Type a message"
           className="w-full bg-whatsapp-sidebar border-none text-white rounded-lg px-4 py-2 focus:outline-none"

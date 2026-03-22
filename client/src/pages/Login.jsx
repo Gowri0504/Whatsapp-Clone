@@ -53,8 +53,10 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-whatsapp-light mb-1">Username</label>
+              <label htmlFor="username" className="block text-whatsapp-light mb-1">Username</label>
               <input
+                id="username"
+                name="username"
                 type="text"
                 className="w-full bg-whatsapp-sidebar border-none text-white rounded p-3 focus:ring-2 focus:ring-whatsapp-green outline-none"
                 placeholder="Enter username"
@@ -67,8 +69,10 @@ const Login = () => {
             </div>
           )}
           <div>
-            <label className="block text-whatsapp-light mb-1">Email</label>
+            <label htmlFor="email" className="block text-whatsapp-light mb-1">Email</label>
             <input
+              id="email"
+              name="email"
               type="email"
               className="w-full bg-whatsapp-sidebar border-none text-white rounded p-3 focus:ring-2 focus:ring-whatsapp-green outline-none"
               placeholder="Enter email"
@@ -80,8 +84,10 @@ const Login = () => {
             />
           </div>
           <div>
-            <label className="block text-whatsapp-light mb-1">Password</label>
+            <label htmlFor="password" className="block text-whatsapp-light mb-1">Password</label>
             <input
+              id="password"
+              name="password"
               type="password"
               className="w-full bg-whatsapp-sidebar border-none text-white rounded p-3 focus:ring-2 focus:ring-whatsapp-green outline-none"
               placeholder="Enter password"
