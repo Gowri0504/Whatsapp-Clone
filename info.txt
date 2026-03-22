@@ -17,7 +17,10 @@ A full-stack WhatsApp Web clone built using the MERN stack (MongoDB, Express.js,
   - Sidebar layout (30/70 split).
   - Vertical Navigation Bar: Chats, Status, Channels, Communities, Settings.
   - Floating New Chat Button: Opens a contacts drawer to start conversations.
+  - Functional 3-Dots Menus: Contextual actions for both chat list and active conversations.
 - **User Authentication**: Secure registration and login with JWT.
+- **Group Chats**: Create and manage group conversations with multiple participants.
+- **Status Updates**: Upload images with captions that disappear after 24 hours.
 - **Profile Management**: 
   - Edit your display name.
   - Change your profile picture (Avatar URL).

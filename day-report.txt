@@ -36,4 +36,12 @@
 - Enhanced Real-time Messaging:
   - Implemented "Message Seen" (blue double checks) status via Socket.IO.
   - Added real-time "Typing..." indicators.
+- Implemented Group Chat:
+  - Backend support for group models and controllers.
+  - Frontend "New Group" creation modal with multi-user selection.
+- Developed Status Feature:
+  - Backend "Status" model and routes.
+  - Frontend Status upload drawer and viewing interface.
+- Added Contextual Menus:
+  - Functional 3-dots menu in both Sidebar and Chat Window with options like "Clear Chat", "New Group", and "Contact Info".
 - Final code audit and push to GitHub repository.

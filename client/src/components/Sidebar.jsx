@@ -21,7 +21,15 @@ const Sidebar = () => {
   const [allUsers, setAllUsers] = useState([]);
   const [showProfile, setShowProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [showStatusUpload, setShowStatusUpload] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [statusImage, setStatusUploadImage] = useState("");
+  const [statusCaption, setStatusCaption] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
+  const [statuses, setStatuses] = useState([]);
   const [profileData, setProfileData] = useState({
     username: user?.username || "",
     avatar: user?.avatar || "",
@@ -52,6 +60,63 @@ const Sidebar = () => {
     setShowNewChat(false);
     setActiveTab("chats");
   };
+
+  const handleCreateGroup = async (e) => {
+    e.preventDefault();
+    if (!groupName || selectedUsers.length < 2) {
+      alert("Group name and at least 2 users are required");
+      return;
+    }
+    try {
+      const { data } = await API.post("/chats/group", {
+        name: groupName,
+        users: JSON.stringify(selectedUsers.map((u) => u._id)),
+      });
+      setChats([data, ...chats]);
+      setShowNewGroup(false);
+      setGroupName("");
+      setSelectedUsers([]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleSelectUser = (u) => {
+    if (selectedUsers.some((user) => user._id === u._id)) {
+      setSelectedUsers(selectedUsers.filter((user) => user._id !== u._id));
+    } else {
+      setSelectedUsers([...selectedUsers, u]);
+    }
+  };
+
+  const handleUploadStatus = async (e) => {
+    e.preventDefault();
+    if (!statusImage) return;
+    try {
+      const { data } = await API.post("/status", {
+        imageUrl: statusImage,
+        caption: statusCaption,
+      });
+      setStatuses([data, ...statuses]);
+      setShowStatusUpload(false);
+      setStatusUploadImage("");
+      setStatusCaption("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const { data } = await API.get("/status");
+        setStatuses(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    if (activeTab === "status") fetchStatuses();
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -175,11 +240,142 @@ const Sidebar = () => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 h-[60px]">
           <h1 className="text-xl font-bold text-white capitalize">{activeTab}</h1>
-          <div className="flex items-center space-x-4 text-whatsapp-gray">
-            <MessageSquare className="w-5 h-5 cursor-pointer hover:text-white" />
-            <MoreVertical className="w-5 h-5 cursor-pointer hover:text-white" />
+          <div className="flex items-center space-x-4 text-whatsapp-gray relative">
+            <MessageSquare 
+              className="w-5 h-5 cursor-pointer hover:text-white" 
+              onClick={() => setShowNewChat(true)}
+            />
+            <div className="relative">
+              <MoreVertical 
+                className="w-5 h-5 cursor-pointer hover:text-white" 
+                onClick={() => setShowMenu(!showMenu)}
+              />
+              {showMenu && (
+                <div className="absolute right-0 top-8 w-48 bg-whatsapp-header shadow-xl rounded-lg py-2 z-[60]">
+                  {[
+                    { label: "New group", onClick: () => { setShowNewGroup(true); setShowMenu(false); } },
+                    { label: "New community", onClick: () => { setActiveTab("communities"); setShowMenu(false); } },
+                    { label: "Starred messages", onClick: () => setShowMenu(false) },
+                    { label: "Select chats", onClick: () => setShowMenu(false) },
+                    { label: "Settings", onClick: () => { setActiveTab("settings"); setShowMenu(false); } },
+                    { label: "Log out", onClick: logout },
+                  ].map((item, i) => (
+                    <div 
+                      key={i} 
+                      className="px-4 py-2 hover:bg-whatsapp-sidebar cursor-pointer text-whatsapp-light text-sm"
+                      onClick={item.onClick}
+                    >
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* New Group Modal */}
+        {showNewGroup && (
+          <div className="absolute inset-0 bg-whatsapp-sidebar z-50 flex flex-col">
+            <div className="bg-whatsapp-header h-[110px] flex items-end p-4 text-white">
+              <div className="flex items-center mb-2">
+                <X
+                  className="w-6 h-6 cursor-pointer mr-6"
+                  onClick={() => setShowNewGroup(false)}
+                />
+                <span className="text-lg font-medium">New Group</span>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto bg-whatsapp-dark">
+              <div className="p-6">
+                <input
+                  type="text"
+                  placeholder="Group Name"
+                  className="w-full bg-transparent border-b border-whatsapp-green outline-none text-white pb-2 mb-8"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                />
+                
+                <p className="text-whatsapp-green text-sm uppercase font-semibold mb-4">
+                  Add members
+                </p>
+                {allUsers.map((u) => (
+                  <div
+                    key={u._id}
+                    onClick={() => toggleSelectUser(u)}
+                    className={`flex items-center px-4 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200 ${
+                      selectedUsers.some(user => user._id === u._id) ? "bg-whatsapp-header" : ""
+                    }`}
+                  >
+                    <img src={u.avatar} className="w-10 h-10 rounded-full mr-4" />
+                    <div className="flex-1 border-b border-whatsapp-header pb-3 flex justify-between items-center">
+                      <h3 className="text-white font-medium">{u.username}</h3>
+                      {selectedUsers.some(user => user._id === u._id) && (
+                        <div className="w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center">
+                          <Plus className="w-3 h-3 text-whatsapp-dark rotate-45" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6 bg-whatsapp-header">
+              <button
+                onClick={handleCreateGroup}
+                className="w-full bg-whatsapp-green text-whatsapp-dark font-bold py-3 rounded shadow-md hover:bg-opacity-90 transition"
+              >
+                Create Group
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Status Upload Modal */}
+        {showStatusUpload && (
+          <div className="absolute inset-0 bg-whatsapp-sidebar z-50 flex flex-col">
+            <div className="bg-whatsapp-header h-[110px] flex items-end p-4 text-white">
+              <div className="flex items-center mb-2">
+                <X
+                  className="w-6 h-6 cursor-pointer mr-6"
+                  onClick={() => setShowStatusUpload(false)}
+                />
+                <span className="text-lg font-medium">Add Status</span>
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center bg-whatsapp-dark p-6">
+              {statusImage ? (
+                <img src={statusImage} className="max-h-[300px] rounded-lg mb-6" />
+              ) : (
+                <div className="w-48 h-48 bg-whatsapp-header rounded-lg flex flex-center mb-6">
+                   <Plus className="w-12 h-12 text-whatsapp-gray" />
+                </div>
+              )}
+              <input
+                type="text"
+                placeholder="Paste Image URL"
+                className="w-full bg-whatsapp-sidebar border-none text-white rounded p-3 mb-4"
+                value={statusImage}
+                onChange={(e) => setStatusUploadImage(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Add a caption..."
+                className="w-full bg-transparent border-b border-whatsapp-gray focus:border-whatsapp-green outline-none text-white pb-2"
+                value={statusCaption}
+                onChange={(e) => setStatusCaption(e.target.value)}
+              />
+            </div>
+            <div className="p-6 bg-whatsapp-header">
+              <button
+                onClick={handleUploadStatus}
+                className="w-full bg-whatsapp-green text-whatsapp-dark font-bold py-3 rounded shadow-md hover:bg-opacity-90 transition"
+              >
+                Post Status
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Profile Modal */}
       {showProfile && (

@@ -6,9 +6,10 @@ import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
 
 const ChatWindow = () => {
-  const { user, selectedChat, socket, onlineUsers } = useChat();
+  const { user, selectedChat, socket, onlineUsers, setSelectedChat } = useChat();
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const scrollRef = useRef();
 
   useEffect(() => {
@@ -123,12 +124,38 @@ const ChatWindow = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-6 text-whatsapp-gray">
-          <Video className="w-5 h-5 cursor-pointer" />
-          <Phone className="w-5 h-5 cursor-pointer" />
+        <div className="flex items-center space-x-6 text-whatsapp-gray relative">
+          <Video className="w-5 h-5 cursor-pointer hover:text-white" />
+          <Phone className="w-5 h-5 cursor-pointer hover:text-white" />
           <div className="w-[1px] h-6 bg-whatsapp-sidebar mx-2"></div>
-          <Search className="w-5 h-5 cursor-pointer" />
-          <MoreVertical className="w-5 h-5 cursor-pointer" />
+          <Search className="w-5 h-5 cursor-pointer hover:text-white" />
+          <div className="relative">
+            <MoreVertical 
+              className="w-5 h-5 cursor-pointer hover:text-white" 
+              onClick={() => setShowMenu(!showMenu)}
+            />
+            {showMenu && (
+              <div className="absolute right-0 top-8 w-48 bg-whatsapp-header shadow-xl rounded-lg py-2 z-[60]">
+                {[
+                  { label: "Contact info", onClick: () => setShowMenu(false) },
+                  { label: "Select messages", onClick: () => setShowMenu(false) },
+                  { label: "Close chat", onClick: () => { setSelectedChat(null); setShowMenu(false); } },
+                  { label: "Mute notifications", onClick: () => setShowMenu(false) },
+                  { label: "Disappearing messages", onClick: () => setShowMenu(false) },
+                  { label: "Clear chat", onClick: () => { setMessages([]); setShowMenu(false); } },
+                  { label: "Delete chat", onClick: () => { setSelectedChat(null); setShowMenu(false); } },
+                ].map((item, i) => (
+                  <div 
+                    key={i} 
+                    className="px-4 py-2 hover:bg-whatsapp-sidebar cursor-pointer text-whatsapp-light text-sm"
+                    onClick={item.onClick}
+                  >
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

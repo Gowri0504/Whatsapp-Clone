@@ -28,6 +28,7 @@ connectDB();
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/chats", require("./routes/chatRoutes"));
+app.use("/api/status", require("./routes/statusRoutes"));
 
 // Socket.IO
 const onlineUsers = new Map();
