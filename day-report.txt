@@ -47,3 +47,16 @@
 - Accessibility & Best Practices:
   - Fixed form field accessibility by adding unique IDs, name attributes, and associated labels across all forms (Login, Profile, New Group, Status Upload, and Message Input).
 - Final code audit and push to GitHub repository.
+
+## Day 4: Bug Fixing, Performance, and Finalization
+- **File/Image Upload**: Implemented end-to-end file and image uploading with Multer, including frontend previews and loading states.
+- **Emoji Picker**: Fixed the emoji picker to close on outside click and insert emojis at the correct cursor position.
+- **Search Functionality**: Implemented debounced search for both sidebar user filtering and in-chat message searching with highlighted results.
+- **Pagination**: Added infinite scroll to the chat window to paginate through message history.
+- **Error Handling**: Added robust error handling on both the frontend and backend to prevent crashes and provide user feedback.
+- **Defensive Coding**: Refactored the codebase to include defensive coding practices, such as optional chaining and default fallback values.
+- **Performance Improvements**: Optimized component rendering with `React.memo` and debounced inputs.
+- **Socket.IO Cleanup**: Ensured proper cleanup of Socket.IO listeners to prevent memory leaks.
+- **UI Improvements**: Added loading indicators for sending messages and a "No messages yet" empty state.
+- **Documentation**: Created a `TESTING.md` file with detailed testing instructions.
+- **Git Workflow**: Staged and committed all changes with a meaningful commit message.

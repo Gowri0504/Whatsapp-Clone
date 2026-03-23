@@ -66,6 +66,17 @@ npm install
 npm run dev
 ```
 
+## 🔒 Environment Variables
+
+Create a `.env` file in the `server` directory and add the following variables:
+
+```
+PORT=5000
+MONGO_URI=your_mongodb_uri
+JWT_SECRET=your_jwt_secret
+REDIS_URL=your_redis_url
+```
+
 ## 📈 Performance & Scalability
 - **Database Indexing**: Compound indexes on `chatId` and `createdAt`.
 - **Zustand Store**: Prevents unnecessary re-renders compared to Context API.

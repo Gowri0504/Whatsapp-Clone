@@ -57,8 +57,6 @@ app.use("/api/status", require("./routes/statusRoutes"));
 const onlineUsersLocal = new Map();
 
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-
   socket.on("join", async (userId) => {
     if (getIsRedisConnected()) {
       await redisClient.hSet("onlineUsers", userId, socket.id);
@@ -69,7 +67,6 @@ io.on("connection", (socket) => {
       io.emit("getOnlineUsers", Array.from(onlineUsersLocal.keys()));
     }
     socket.join(userId);
-    console.log(`User ${userId} joined room`);
   });
 
   socket.on("send_message", async (data) => {
@@ -129,13 +126,11 @@ io.on("connection", (socket) => {
           await redisClient.hDel("onlineUsers", userId);
           const online = await redisClient.hKeys("onlineUsers");
           io.emit("getOnlineUsers", online);
-          console.log(`User ${userId} disconnected`);
         }
       } else {
         onlineUsersLocal.forEach((value, key) => {
           if (value === socket.id) {
             onlineUsersLocal.delete(key);
-            console.log(`User ${key} disconnected`);
           }
         });
         io.emit("getOnlineUsers", Array.from(onlineUsersLocal.keys()));

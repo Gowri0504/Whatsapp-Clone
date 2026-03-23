@@ -13,6 +13,7 @@ A full-stack WhatsApp Web clone built using the MERN stack (MongoDB, Express.js,
 
 ## ✨ Core Features
 - **Real-time Messaging**: Instant message delivery and receipt via Socket.IO.
+- **File/Image Upload**: Upload and share images and audio files in chats.
 - **Authentic WhatsApp UI**: 
   - Sidebar layout (30/70 split).
   - Vertical Navigation Bar: Chats, Status, Channels, Communities, Settings.
@@ -25,12 +26,13 @@ A full-stack WhatsApp Web clone built using the MERN stack (MongoDB, Express.js,
   - Edit your display name.
   - Change your profile picture (Avatar URL).
 - **Chat UX**:
-  - Search/Filter chats.
+  - Search/Filter chats and messages.
   - New Chat Drawer: Discover and start chats with any registered user.
   - Real-time Message Status: Sent (single check), Delivered (double check), Seen (blue double check).
   - Typing Indicators: See when your contacts are typing in real-time.
   - Emoji Picker: Integrated emoji support for all messages.
   - Auto-scroll: Automatically scrolls to the newest message.
+  - Pagination: Infinite scroll for loading older messages.
 - **Responsive Design**: Clean and functional dark theme across all components.
 - **Accessibility & Best Practices**:
   - Semantic HTML structure.
