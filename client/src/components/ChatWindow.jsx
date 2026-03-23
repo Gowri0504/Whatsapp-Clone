@@ -6,6 +6,7 @@ import API from "../services/api";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
 import SkeletonLoader from "./SkeletonLoader";
+import useDebounce from "../hooks/useDebounce";
 
 const ChatWindow = () => {
   const { user } = useAuthStore();
@@ -14,28 +15,60 @@ const ChatWindow = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const scrollRef = useRef();
+  const messageContainerRef = useRef();
+
+  const fetchMessages = async (pageNum) => {
+    if (!hasMore) return;
+    setIsLoadingMessages(true);
+    try {
+      const { data } = await API.get(`/messages/${selectedChat?._id}/${user?._id}?page=${pageNum}&limit=20`);
+      if (data.length === 0) {
+        setHasMore(false);
+      } else {
+        setMessages(prev => [...(data || []), ...prev]);
+        setPage(pageNum + 1);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching messages. Please try again.");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedChat) {
-      const fetchMessages = async () => {
-        setIsLoadingMessages(true);
-        try {
-          const { data } = await API.get(`/messages/${selectedChat._id}/${user._id}`);
-          setMessages(data);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setIsLoadingMessages(false);
-        }
-      };
-      fetchMessages();
+      setMessages([]);
+      setPage(1);
+      setHasMore(true);
+      fetchMessages(1);
     }
-  }, [selectedChat, user._id, setMessages]);
+  }, [selectedChat, user?._id]);
+
+  useEffect(() => {
+    const container = messageContainerRef.current;
+    const handleScroll = () => {
+      if (container?.scrollTop === 0 && !isLoadingMessages && hasMore) {
+        const oldScrollHeight = container.scrollHeight;
+        fetchMessages(page).then(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - oldScrollHeight;
+          }
+        });
+      }
+    };
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [page, isLoadingMessages, hasMore, fetchMessages]);
 
   useEffect(() => {
     if (socket) {
-      socket.on("receive_message", (data) => {
+      socket.off("receive_message").on("receive_message", (data) => {
         if (selectedChat && data.senderId === selectedChat._id) {
           setMessages((prev) => [...prev, data]);
           // Mark as seen if chat is open
@@ -47,16 +80,16 @@ const ChatWindow = () => {
         }
       });
 
-      socket.on("display_typing", (data) => {
+      socket.off("display_typing").on("display_typing", (data) => {
         if (selectedChat && data.senderId === selectedChat._id) {
           setIsTyping(true);
           setTimeout(() => setIsTyping(false), 3000);
         }
       });
 
-      socket.on("message_seen", (data) => {
+      socket.off("message_seen").on("message_seen", (data) => {
         setMessages((prev) =>
-          prev.map((msg) =>
+          (Array.isArray(prev) ? prev : []).map((msg) =>
             msg._id === data.messageId ? { ...msg, status: "seen" } : msg
           )
         );
@@ -74,12 +107,13 @@ const ChatWindow = () => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async (message) => {
+  const handleSend = async (message, type = "text") => {
     const optimisticMessage = {
       _id: Date.now().toString(),
-      senderId: user._id,
-      receiverId: selectedChat._id,
+      senderId: user?._id,
+      receiverId: selectedChat?._id,
       message,
+      type,
       status: "sent",
       createdAt: new Date().toISOString(),
     };
@@ -88,21 +122,28 @@ const ChatWindow = () => {
 
     try {
       const { data } = await API.post("/messages", {
-        senderId: user._id,
-        receiverId: selectedChat._id,
+        senderId: user?._id,
+        receiverId: selectedChat?._id,
         message,
+        type,
       });
       // Replace optimistic message with actual data if needed, or just update status
       socket.emit("send_message", data);
     } catch (err) {
       console.error(err);
+      alert("Error sending message. Please try again.");
       // Remove optimistic message on error if desired
+      setMessages(prev => (Array.isArray(prev) ? prev : []).filter(msg => msg._id !== optimisticMessage._id));
     }
   };
 
   const handleTyping = () => {
-    socket.emit("typing", { senderId: user._id, receiverId: selectedChat._id });
+    socket.emit("typing", { senderId: user?._id, receiverId: selectedChat?._id });
   };
+
+  const filteredMessages = (Array.isArray(messages) ? messages : []).filter(msg => 
+    msg.message?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+  );
 
   if (!selectedChat) {
     return (
@@ -120,7 +161,7 @@ const ChatWindow = () => {
     );
   }
 
-  const isOnline = onlineUsers.includes(selectedChat._id);
+  const isOnline = onlineUsers.includes(selectedChat?._id);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0b141a]">
@@ -128,13 +169,13 @@ const ChatWindow = () => {
       <div className="flex items-center justify-between p-4 bg-whatsapp-header h-[60px]">
         <div className="flex items-center">
           <img
-            src={selectedChat.avatar}
-            alt={selectedChat.username}
+            src={selectedChat?.avatar}
+            alt={selectedChat?.username}
             className="w-10 h-10 rounded-full mr-4"
           />
           <div>
             <h3 className="text-white text-sm font-medium">
-              {selectedChat.username}
+              {selectedChat?.username}
             </h3>
             <p className="text-whatsapp-gray text-xs">
               {isTyping ? "typing..." : isOnline ? "online" : "offline"}
@@ -142,10 +183,19 @@ const ChatWindow = () => {
           </div>
         </div>
         <div className="flex items-center space-x-6 text-whatsapp-gray relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-whatsapp-gray" />
+            <input 
+              type="text"
+              placeholder="Search..."
+              className="bg-whatsapp-sidebar rounded-lg pl-10 pr-4 py-1.5 text-sm text-white focus:outline-none w-48 transition-all duration-300 focus:w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <Video className="w-5 h-5 cursor-pointer hover:text-white" />
           <Phone className="w-5 h-5 cursor-pointer hover:text-white" />
           <div className="w-[1px] h-6 bg-whatsapp-sidebar mx-2"></div>
-          <Search className="w-5 h-5 cursor-pointer hover:text-white" />
           <div className="relative">
             <MoreVertical 
               className="w-5 h-5 cursor-pointer hover:text-white" 
@@ -177,18 +227,24 @@ const ChatWindow = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
-        {isLoadingMessages ? (
-          <SkeletonLoader type="message" />
-        ) : (
-          messages.map((msg, index) => (
-            <MessageBubble
-              key={msg._id || index}
-              message={msg}
-              isOwn={msg.senderId === user._id}
-            />
-          ))
+      <div ref={messageContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+        {isLoadingMessages && <div className="text-center text-white">Loading...</div>}
+        {!isLoadingMessages && filteredMessages.length === 0 && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-whatsapp-gray">
+              <p>No messages yet</p>
+              <p className="text-xs">Send a message to start the conversation</p>
+            </div>
+          </div>
         )}
+        {(Array.isArray(filteredMessages) ? filteredMessages : []).map((msg, index) => (
+          <MessageBubble
+            key={msg?._id || index}
+            message={msg}
+            isOwn={msg?.senderId === user?._id}
+            searchTerm={debouncedSearchTerm}
+          />
+        ))}
         <div ref={scrollRef}></div>
       </div>
 

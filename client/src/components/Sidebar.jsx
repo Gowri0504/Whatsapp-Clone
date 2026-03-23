@@ -16,11 +16,13 @@ import useChatStore from "../store/useChatStore";
 import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
 import SkeletonLoader from "./SkeletonLoader";
+import useDebounce from "../hooks/useDebounce";
 
 const Sidebar = () => {
   const { user, setUser, logout } = useAuthStore();
   const { setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChatStore();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [allUsers, setAllUsers] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -56,6 +58,7 @@ const Sidebar = () => {
       setShowProfile(false);
     } catch (err) {
       console.error(err);
+      alert("Error updating profile. Please try again.");
     }
   };
 
@@ -76,12 +79,13 @@ const Sidebar = () => {
         name: groupName,
         users: JSON.stringify(selectedUsers.map((u) => u._id)),
       });
-      setChats([data, ...chats]);
+      setChats([data, ...(chats || [])]);
       setShowNewGroup(false);
       setGroupName("");
       setSelectedUsers([]);
     } catch (err) {
       console.error(err);
+      alert("Error creating group. Please try again.");
     }
   };
 
@@ -101,12 +105,13 @@ const Sidebar = () => {
         imageUrl: statusImage,
         caption: statusCaption,
       });
-      setStatuses([data, ...statuses]);
+      setStatuses([data, ...(statuses || [])]);
       setShowStatusUpload(false);
       setStatusUploadImage("");
       setStatusCaption("");
     } catch (err) {
       console.error(err);
+      alert("Error uploading status. Please try again.");
     }
   };
 
@@ -114,9 +119,10 @@ const Sidebar = () => {
     const fetchStatuses = async () => {
       try {
         const { data } = await API.get("/status");
-        setStatuses(data);
+        setStatuses(data || []);
       } catch (err) {
         console.error(err);
+        alert("Error fetching statuses. Please try again.");
       }
     };
     if (activeTab === "status") fetchStatuses();
@@ -126,33 +132,35 @@ const Sidebar = () => {
     const fetchUsers = async () => {
       setIsLoadingUsers(true);
       try {
-        const { data } = await API.get("/users");
-        setAllUsers(data);
+        const { data } = await API.get(`/users?search=${debouncedSearch}`);
+        setAllUsers(data || []);
       } catch (err) {
         console.error(err);
+        alert("Error fetching users. Please try again.");
       } finally {
         setIsLoadingUsers(false);
       }
     };
     fetchUsers();
-  }, []);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     const fetchChats = async () => {
       if (user) {
         try {
           const { data } = await API.get(`/chats/${user._id}`);
-          setChats(data);
+          setChats(data || []);
         } catch (err) {
           console.error(err);
+          alert("Error fetching chats. Please try again.");
         }
       }
     };
     fetchChats();
   }, [user, setChats]);
 
-  const filteredUsers = allUsers.filter((u) =>
-    u.username.toLowerCase().includes(search.toLowerCase())
+  const filteredUsers = (Array.isArray(allUsers) ? allUsers : []).filter((u) =>
+    u.username?.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   return (

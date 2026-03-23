@@ -12,7 +12,14 @@ const useChatStore = create((set, get) => ({
   setSelectedChat: (chat) => set({ selectedChat: chat, messages: [] }),
   setChats: (chats) => set({ chats }),
   setOnlineUsers: (users) => set({ onlineUsers: users }),
-  setMessages: (messages) => set({ messages }),
+  setMessages: (messages) => {
+    if (Array.isArray(messages)) {
+      set({ messages });
+    } else {
+      console.error("setMessages received a non-array value:", messages);
+      set({ messages: [] }); // Fallback to empty array
+    }
+  },
   
   // Optimistic Message Update
   addMessage: (message) => set((state) => ({ 

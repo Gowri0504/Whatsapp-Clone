@@ -1,11 +1,35 @@
-import React from "react";
-import { Check, CheckCheck } from "lucide-react";
+import React, { memo } from "react";
+import { Check, CheckCheck, Clock } from "lucide-react";
 
-const MessageBubble = ({ message, isOwn }) => {
+const MessageBubble = ({ message, isOwn, searchTerm }) => {
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  const isImage = message.type === "image";
+  const isAudio = message.type === "audio";
+
+  const getHighlightedText = (text, highlight) => {
+    if (!highlight.trim()) {
+      return <span>{text}</span>;
+    }
+    const regex = new RegExp(`(${highlight})`, 'gi');
+    const parts = text.split(regex);
+    return (
+      <span>
+        {parts.map((part, i) =>
+          regex.test(part) ? (
+            <strong key={i} className="bg-yellow-300 text-black">
+              {part}
+            </strong>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
 
   return (
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-1`}>
@@ -14,9 +38,15 @@ const MessageBubble = ({ message, isOwn }) => {
           isOwn
             ? "bg-whatsapp-sent text-white rounded-tr-none"
             : "bg-whatsapp-received text-white rounded-tl-none"
-        }`}
+        } ${isImage || isAudio ? "p-1" : ""}`}
       >
-        <p className="pr-12">{message.message}</p>
+        {isImage ? (
+          <img src={message.message} alt="Shared content" className="rounded-md max-w-xs" />
+        ) : isAudio ? (
+          <audio controls src={message.message} className="w-full"></audio>
+        ) : (
+          <p className="pr-12">{getHighlightedText(message.message, searchTerm)}</p>
+        )}
         <div className="absolute bottom-1 right-2 flex items-center space-x-1">
           <span className="text-[10px] text-whatsapp-light opacity-70">
             {time}
@@ -27,8 +57,10 @@ const MessageBubble = ({ message, isOwn }) => {
                 <CheckCheck className="w-3 h-3 text-blue-400" />
               ) : message.status === "delivered" ? (
                 <CheckCheck className="w-3 h-3" />
-              ) : (
+              ) : message.status === "sent" ? (
                 <Check className="w-3 h-3" />
+              ) : (
+                <Clock className="w-3 h-3 animate-spin" />
               )}
             </div>
           )}
@@ -38,4 +70,4 @@ const MessageBubble = ({ message, isOwn }) => {
   );
 };
 
-export default MessageBubble;
+export default memo(MessageBubble);

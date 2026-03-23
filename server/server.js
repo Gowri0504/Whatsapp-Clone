@@ -5,7 +5,7 @@ const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const cors = require("cors");
 const connectDB = require("./config/db");
-const { connectRedis, client: redisClient } = require("./config/redis");
+const { connectRedis, client: redisClient, getIsRedisConnected } = require("./config/redis");
 
 const app = express();
 const server = http.createServer(app);
@@ -42,10 +42,10 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
 }));
 app.use(express.json());
+app.use(express.static('public'));
 
 // Database connection
 connectDB();
-// connectRedis() is already called inside initIO()
 
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));
@@ -54,45 +54,95 @@ app.use("/api/chats", require("./routes/chatRoutes"));
 app.use("/api/status", require("./routes/statusRoutes"));
 
 // Socket.IO
-const onlineUsers = new Map();
+const onlineUsersLocal = new Map();
 
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("join", (userId) => {
-    onlineUsers.set(userId, socket.id);
+  socket.on("join", async (userId) => {
+    if (getIsRedisConnected()) {
+      await redisClient.hSet("onlineUsers", userId, socket.id);
+      const online = await redisClient.hKeys("onlineUsers");
+      io.emit("getOnlineUsers", online);
+    } else {
+      onlineUsersLocal.set(userId, socket.id);
+      io.emit("getOnlineUsers", Array.from(onlineUsersLocal.keys()));
+    }
     socket.join(userId);
     console.log(`User ${userId} joined room`);
-    io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
   });
 
-  socket.on("send_message", (data) => {
-    const receiverSocketId = onlineUsers.get(data.receiverId);
+  socket.on("send_message", async (data) => {
+    let receiverSocketId;
+    if (getIsRedisConnected()) {
+      receiverSocketId = await redisClient.hGet("onlineUsers", data.receiverId);
+    } else {
+      receiverSocketId = onlineUsersLocal.get(data.receiverId);
+    }
     if (receiverSocketId) {
-      io.to(data.receiverId).emit("receive_message", data);
+      io.to(receiverSocketId).emit("receive_message", data);
     }
   });
 
-  socket.on("typing", (data) => {
-    socket.to(data.receiverId).emit("display_typing", data);
+  socket.on("typing", async (data) => {
+    let receiverSocketId;
+    if (getIsRedisConnected()) {
+      receiverSocketId = await redisClient.hGet("onlineUsers", data.receiverId);
+    } else {
+      receiverSocketId = onlineUsersLocal.get(data.receiverId);
+    }
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("display_typing", data);
+    }
   });
 
-  socket.on("stop_typing", (data) => {
-    socket.to(data.receiverId).emit("hide_typing", data);
+  socket.on("stop_typing", async (data) => {
+    let receiverSocketId;
+    if (getIsRedisConnected()) {
+      receiverSocketId = await redisClient.hGet("onlineUsers", data.receiverId);
+    } else {
+      receiverSocketId = onlineUsersLocal.get(data.receiverId);
+    }
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("hide_typing", data);
+    }
   });
 
-  socket.on("mark_seen", (data) => {
-    socket.to(data.senderId).emit("message_seen", data);
+  socket.on("mark_seen", async (data) => {
+    let senderSocketId;
+    if (getIsRedisConnected()) {
+      senderSocketId = await redisClient.hGet("onlineUsers", data.senderId);
+    } else {
+      senderSocketId = onlineUsersLocal.get(data.senderId);
+    }
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("message_seen", data);
+    }
   });
 
-  socket.on("disconnect", () => {
-    onlineUsers.forEach((value, key) => {
-      if (value === socket.id) {
-        onlineUsers.delete(key);
+  socket.on("disconnect", async () => {
+    try {
+      if (getIsRedisConnected()) {
+        const allUsers = await redisClient.hGetAll("onlineUsers");
+        const userId = Object.keys(allUsers).find(key => allUsers[key] === socket.id);
+        if (userId) {
+          await redisClient.hDel("onlineUsers", userId);
+          const online = await redisClient.hKeys("onlineUsers");
+          io.emit("getOnlineUsers", online);
+          console.log(`User ${userId} disconnected`);
+        }
+      } else {
+        onlineUsersLocal.forEach((value, key) => {
+          if (value === socket.id) {
+            onlineUsersLocal.delete(key);
+            console.log(`User ${key} disconnected`);
+          }
+        });
+        io.emit("getOnlineUsers", Array.from(onlineUsersLocal.keys()));
       }
-    });
-    io.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
-    console.log("A user disconnected");
+    } catch (err) {
+      console.error("Error on disconnect:", err);
+    }
   });
 });
 
