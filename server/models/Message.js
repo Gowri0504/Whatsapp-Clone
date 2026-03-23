@@ -6,11 +6,18 @@ const messageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
+    },
+    chatId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chat",
+      index: true,
     },
     message: {
       type: String,
@@ -32,5 +39,8 @@ const messageSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+messageSchema.index({ createdAt: 1 });
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: 1 });
 
 module.exports = mongoose.model("Message", messageSchema);

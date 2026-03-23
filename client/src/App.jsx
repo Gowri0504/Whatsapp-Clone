@@ -1,16 +1,16 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { ChatProvider, useChat } from "./context/ChatContext";
+import useAuthStore from "./store/useAuthStore";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useChat();
+  const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" />;
   return children;
 };
 
-const AppContent = () => {
+const App = () => {
   return (
     <Router>
       <Routes>
@@ -25,14 +25,6 @@ const AppContent = () => {
         />
       </Routes>
     </Router>
-  );
-};
-
-const App = () => {
-  return (
-    <ChatProvider>
-      <AppContent />
-    </ChatProvider>
   );
 };
 

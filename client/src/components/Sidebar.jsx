@@ -12,11 +12,13 @@ import {
   MessageCircle,
   Plus
 } from "lucide-react";
-import { useChat } from "../context/ChatContext";
+import useChatStore from "../store/useChatStore";
+import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
 
 const Sidebar = () => {
-  const { user, setUser, logout, setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChat();
+  const { user, setUser, logout } = useAuthStore();
+  const { setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChatStore();
   const [search, setSearch] = useState("");
   const [allUsers, setAllUsers] = useState([]);
   const [showProfile, setShowProfile] = useState(false);

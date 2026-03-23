@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MoreVertical, Search, Phone, Video } from "lucide-react";
-import { useChat } from "../context/ChatContext";
+import useChatStore from "../store/useChatStore";
+import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
 
 const ChatWindow = () => {
-  const { user, selectedChat, socket, onlineUsers, setSelectedChat } = useChat();
-  const [messages, setMessages] = useState([]);
+  const { user } = useAuthStore();
+  const { selectedChat, socket, onlineUsers, setSelectedChat, messages, setMessages, addMessage } = useChatStore();
+
   const [isTyping, setIsTyping] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const scrollRef = useRef();
@@ -68,18 +70,28 @@ const ChatWindow = () => {
   }, [messages]);
 
   const handleSend = async (message) => {
-    const messageData = {
+    const optimisticMessage = {
+      _id: Date.now().toString(),
       senderId: user._id,
       receiverId: selectedChat._id,
       message,
+      status: "sent",
+      createdAt: new Date().toISOString(),
     };
 
+    addMessage(optimisticMessage);
+
     try {
-      const { data } = await API.post("/messages", messageData);
-      setMessages((prev) => [...prev, data]);
+      const { data } = await API.post("/messages", {
+        senderId: user._id,
+        receiverId: selectedChat._id,
+        message,
+      });
+      // Replace optimistic message with actual data if needed, or just update status
       socket.emit("send_message", data);
     } catch (err) {
       console.error(err);
+      // Remove optimistic message on error if desired
     }
   };
 

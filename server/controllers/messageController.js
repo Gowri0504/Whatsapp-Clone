@@ -33,14 +33,20 @@ const sendMessage = async (req, res) => {
 
 const getMessages = async (req, res) => {
   const { receiverId, senderId } = req.params;
+  const { page = 1, limit = 20 } = req.query;
+
   try {
     const messages = await Message.find({
       $or: [
         { senderId, receiverId },
         { senderId: receiverId, receiverId: senderId },
       ],
-    }).sort({ createdAt: 1 });
-    res.status(200).json(messages);
+    })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    res.status(200).json(messages.reverse());
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

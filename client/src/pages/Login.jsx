@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
-import { useChat } from "../context/ChatContext";
+import useAuthStore from "../store/useAuthStore";
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,7 +12,7 @@ const Login = () => {
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { user, setUser } = useChat();
+  const { user, setUser } = useAuthStore();
 
   useEffect(() => {
     if (user) navigate("/");
