@@ -17,15 +17,24 @@ const io = new Server(server, {
 });
 
 // Redis Adapter for Socket.IO Scaling
-const pubClient = redisClient;
-const subClient = pubClient.duplicate();
-
 const initIO = async () => {
-  await subClient.connect();
-  io.adapter(createAdapter(pubClient, subClient));
+  try {
+    const isConnected = await connectRedis();
+    if (isConnected) {
+      const pubClient = redisClient;
+      const subClient = pubClient.duplicate();
+      await subClient.connect();
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log("Socket.IO Redis Adapter applied");
+    } else {
+      console.log("Socket.IO running without Redis scaling (local mode)");
+    }
+  } catch (err) {
+    console.error("IO Adapter initialization skipped:", err.message);
+  }
 };
 
-initIO().catch(err => console.error("IO Adapter Error:", err));
+initIO();
 
 // Middleware
 app.use(cors({
@@ -36,7 +45,7 @@ app.use(express.json());
 
 // Database connection
 connectDB();
-connectRedis();
+// connectRedis() is already called inside initIO()
 
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));

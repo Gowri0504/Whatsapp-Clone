@@ -2,21 +2,40 @@ const redis = require("redis");
 
 const client = redis.createClient({
   url: process.env.REDIS_URL || "redis://localhost:6379",
+  socket: {
+    reconnectStrategy: (retries) => {
+      if (retries > 3) {
+        console.log("Redis reconnection failed after 3 attempts. Continuing without Redis.");
+        return false; // Stop reconnecting
+      }
+      return 1000; // Try again in 1s
+    }
+  }
 });
 
-client.on("error", (err) => console.log("Redis Client Error", err));
+let isRedisConnected = false;
+
+client.on("error", (err) => {
+  // Only log if it was previously connected or on first fail
+  if (isRedisConnected) {
+    console.log("Redis Client Error", err.message);
+    isRedisConnected = false;
+  }
+});
 
 const connectRedis = async () => {
   try {
-    // Check if client is already connected or connecting
     if (!client.isOpen) {
       await client.connect();
       console.log("Redis Connected Successfully");
+      isRedisConnected = true;
     }
+    return true;
   } catch (err) {
     console.error("Redis Connection Failed:", err.message);
-    // In production, you might want to handle this more gracefully
+    isRedisConnected = false;
+    return false;
   }
 };
 
-module.exports = { client, connectRedis };
+module.exports = { client, connectRedis, getIsRedisConnected: () => isRedisConnected };
