@@ -45,7 +45,10 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Database connection
-connectDB();
+connectDB().then(() => {
+  const seedDemoUsers = require("./config/seed");
+  seedDemoUsers();
+});
 
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));

@@ -7,11 +7,12 @@ const MessageBubble = ({ message, isOwn, searchTerm }) => {
     minute: "2-digit",
   });
 
-  const isImage = message.type === "image";
-  const isAudio = message.type === "audio";
+  const isImage = message?.type === "image";
+  const isAudio = message?.type === "audio";
 
   const getHighlightedText = (text, highlight) => {
-    if (!highlight.trim()) {
+    if (!text) return "";
+    if (!highlight?.trim()) {
       return <span>{text}</span>;
     }
     const regex = new RegExp(`(${highlight})`, 'gi');
