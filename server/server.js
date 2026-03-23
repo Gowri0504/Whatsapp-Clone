@@ -2,8 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const { createAdapter } = require("@socket.io/redis-adapter");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const { connectRedis, client: redisClient } = require("./config/redis");
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +16,17 @@ const io = new Server(server, {
   },
 });
 
+// Redis Adapter for Socket.IO Scaling
+const pubClient = redisClient;
+const subClient = pubClient.duplicate();
+
+const initIO = async () => {
+  await subClient.connect();
+  io.adapter(createAdapter(pubClient, subClient));
+};
+
+initIO().catch(err => console.error("IO Adapter Error:", err));
+
 // Middleware
 app.use(cors({
   origin: "*",
@@ -23,6 +36,7 @@ app.use(express.json());
 
 // Database connection
 connectDB();
+connectRedis();
 
 // Routes
 app.use("/api/users", require("./routes/userRoutes"));

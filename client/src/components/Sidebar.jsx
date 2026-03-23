@@ -15,12 +15,14 @@ import {
 import useChatStore from "../store/useChatStore";
 import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
+import SkeletonLoader from "./SkeletonLoader";
 
 const Sidebar = () => {
   const { user, setUser, logout } = useAuthStore();
   const { setSelectedChat, selectedChat, onlineUsers, setChats, chats } = useChatStore();
   const [search, setSearch] = useState("");
   const [allUsers, setAllUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -122,11 +124,14 @@ const Sidebar = () => {
 
   useEffect(() => {
     const fetchUsers = async () => {
+      setIsLoadingUsers(true);
       try {
         const { data } = await API.get("/users");
         setAllUsers(data);
       } catch (err) {
         console.error(err);
+      } finally {
+        setIsLoadingUsers(false);
       }
     };
     fetchUsers();
@@ -219,23 +224,27 @@ const Sidebar = () => {
             <p className="px-6 py-4 text-whatsapp-green text-sm uppercase font-semibold">
               Contacts on WhatsApp
             </p>
-            {filteredUsers.map((u) => (
-              <div
-                key={u._id}
-                onClick={() => startNewChat(u)}
-                className="flex items-center px-6 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200"
-              >
-                <img
-                  src={u.avatar}
-                  alt={u.username}
-                  className="w-12 h-12 rounded-full mr-4"
-                />
-                <div className="flex-1 border-b border-whatsapp-header pb-3">
-                  <h3 className="text-white font-medium">{u.username}</h3>
-                  <p className="text-whatsapp-gray text-xs">Available</p>
+            {isLoadingUsers ? (
+              Array(5).fill(0).map((_, i) => <SkeletonLoader key={i} type="chatItem" />)
+            ) : (
+              filteredUsers.map((u) => (
+                <div
+                  key={u._id}
+                  onClick={() => startNewChat(u)}
+                  className="flex items-center px-6 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200"
+                >
+                  <img
+                    src={u.avatar}
+                    alt={u.username}
+                    className="w-12 h-12 rounded-full mr-4"
+                  />
+                  <div className="flex-1 border-b border-whatsapp-header pb-3">
+                    <h3 className="text-white font-medium">{u.username}</h3>
+                    <p className="text-whatsapp-gray text-xs">Available</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}

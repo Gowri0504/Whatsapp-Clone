@@ -5,11 +5,13 @@ import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
+import SkeletonLoader from "./SkeletonLoader";
 
 const ChatWindow = () => {
   const { user } = useAuthStore();
   const { selectedChat, socket, onlineUsers, setSelectedChat, messages, setMessages, addMessage } = useChatStore();
 
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const scrollRef = useRef();
@@ -17,16 +19,19 @@ const ChatWindow = () => {
   useEffect(() => {
     if (selectedChat) {
       const fetchMessages = async () => {
+        setIsLoadingMessages(true);
         try {
           const { data } = await API.get(`/messages/${selectedChat._id}/${user._id}`);
           setMessages(data);
         } catch (err) {
           console.error(err);
+        } finally {
+          setIsLoadingMessages(false);
         }
       };
       fetchMessages();
     }
-  }, [selectedChat, user._id]);
+  }, [selectedChat, user._id, setMessages]);
 
   useEffect(() => {
     if (socket) {
@@ -173,13 +178,17 @@ const ChatWindow = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
-        {messages.map((msg, index) => (
-          <MessageBubble
-            key={msg._id || index}
-            message={msg}
-            isOwn={msg.senderId === user._id}
-          />
-        ))}
+        {isLoadingMessages ? (
+          <SkeletonLoader type="message" />
+        ) : (
+          messages.map((msg, index) => (
+            <MessageBubble
+              key={msg._id || index}
+              message={msg}
+              isOwn={msg.senderId === user._id}
+            />
+          ))
+        )}
         <div ref={scrollRef}></div>
       </div>
 
