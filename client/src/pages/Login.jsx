@@ -24,6 +24,7 @@ const Login = () => {
     try {
       const endpoint = isLogin ? "/users/login" : "/users/register";
       const { data } = await API.post(endpoint, formData);
+      localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
       setUser(data);
       navigate("/");

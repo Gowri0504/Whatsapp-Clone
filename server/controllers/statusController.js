@@ -1,18 +1,16 @@
 const Status = require("../models/Status");
 
 const uploadStatus = async (req, res) => {
-  const { imageUrl, caption } = req.body;
-  if (!imageUrl) {
-    return res.status(400).json({ message: "Image is required" });
-  }
-
+  const { mediaUrl, caption, type } = req.body;
   try {
     const status = await Status.create({
       userId: req.user._id,
-      imageUrl,
+      mediaUrl,
       caption,
+      type
     });
-    res.status(201).json(status);
+    const populatedStatus = await status.populate("userId", "username avatar");
+    res.status(201).json(populatedStatus);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -20,11 +18,8 @@ const uploadStatus = async (req, res) => {
 
 const getStatuses = async (req, res) => {
   try {
-    const statuses = await Status.find({
-      expiresAt: { $gt: new Date() },
-    })
-      .populate("userId", "username avatar")
-      .sort({ createdAt: -1 });
+    // Get statuses from contacts/all users for demo
+    const statuses = await Status.find().populate("userId", "username avatar").sort({ createdAt: -1 });
     res.status(200).json(statuses);
   } catch (error) {
     res.status(500).json({ message: error.message });

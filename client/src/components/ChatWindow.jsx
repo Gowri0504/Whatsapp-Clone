@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MoreVertical, Search, Phone, Video } from "lucide-react";
+import { MoreVertical, Search, Phone, Video, PhoneCall } from "lucide-react";
 import useChatStore from "../store/useChatStore";
 import useAuthStore from "../store/useAuthStore";
 import API from "../services/api";
@@ -10,7 +10,7 @@ import useDebounce from "../hooks/useDebounce";
 
 const ChatWindow = () => {
   const { user } = useAuthStore();
-  const { selectedChat, socket, onlineUsers, setSelectedChat, messages, setMessages, addMessage } = useChatStore();
+  const { selectedChat, socket, onlineUsers, setSelectedChat, messages, setMessages, addMessage, callUser } = useChatStore();
 
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -23,18 +23,50 @@ const ChatWindow = () => {
   const messageContainerRef = useRef();
 
   const fetchMessages = async (pageNum) => {
+    const token = localStorage.getItem("token") || localStorage.getItem("userInfo");
+    if (!selectedChat?._id || !user?._id || !token) return;
+    
+    // Use a lock to prevent duplicate fetch calls for the same page
+    if (isLoadingMessages) return;
+
+    // For Channels, we don't use pagination for now as it's a simple internal array
+    if (selectedChat.isChannel) {
+      if (pageNum > 1) return; // No pagination for channels yet
+      setIsLoadingMessages(true);
+      try {
+        const { data } = await API.get(`/channels/${selectedChat._id}/messages`);
+        const incomingMessages = Array.isArray(data) ? data.map(msg => ({
+          ...msg,
+          senderId: typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId
+        })) : [];
+        setMessages(incomingMessages);
+        setHasMore(false);
+      } catch (err) {
+        console.error("Fetch channel messages error:", err);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+      return;
+    }
+
     if (!hasMore) return;
     setIsLoadingMessages(true);
     try {
-      const { data } = await API.get(`/messages/${selectedChat?._id}/${user?._id}?page=${pageNum}&limit=20`);
-      if (data.length === 0) {
+      const { data } = await API.get(`/messages/${selectedChat._id}/${user._id}?page=${pageNum}&limit=20`);
+      const incomingMessages = Array.isArray(data) ? data : [];
+      
+      if (incomingMessages.length === 0) {
         setHasMore(false);
       } else {
-        setMessages(prev => [...(data || []), ...prev]);
+        setMessages(prev => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          // Prepend older messages while maintaining deduplication
+          return [...incomingMessages, ...safePrev];
+        });
         setPage(pageNum + 1);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Fetch messages error:", err);
       alert("Error fetching messages. Please try again.");
     } finally {
       setIsLoadingMessages(false);
@@ -42,108 +74,169 @@ const ChatWindow = () => {
   };
 
   useEffect(() => {
-    if (selectedChat) {
-      setMessages([]);
+    if (selectedChat?._id) {
+      setMessages(() => []);
       setPage(1);
       setHasMore(true);
       fetchMessages(1);
     }
-  }, [selectedChat, user?._id]);
+  }, [selectedChat?._id, user?._id]);
 
   useEffect(() => {
     const container = messageContainerRef.current;
+    if (!container) return;
+
     const handleScroll = () => {
-      if (container?.scrollTop === 0 && !isLoadingMessages && hasMore) {
+      // Logic for infinite scroll
+      if (container.scrollTop === 0 && !isLoadingMessages && hasMore) {
         const oldScrollHeight = container.scrollHeight;
         fetchMessages(page).then(() => {
-          if (container) {
-            container.scrollTop = container.scrollHeight - oldScrollHeight;
-          }
+          // Maintain scroll position after prepending messages
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = container.scrollHeight - oldScrollHeight;
+            }
+          });
         });
       }
     };
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [page, isLoadingMessages, hasMore, fetchMessages]);
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [page, isLoadingMessages, hasMore, selectedChat?._id]);
 
   useEffect(() => {
-    if (socket) {
-      socket.off("receive_message").on("receive_message", (data) => {
-        if (selectedChat && data.senderId === selectedChat._id) {
-          setMessages((prev) => [...prev, data]);
-          // Mark as seen if chat is open
+    if (!socket || !selectedChat?._id) return;
+
+    const handleReceiveMessage = (data) => {
+      if (data && (data.senderId === selectedChat._id || (selectedChat.isChannel && data.channelId === selectedChat._id))) {
+        setMessages((prev) => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          if (safePrev.some(msg => msg?._id === data._id)) return safePrev;
+          return [...safePrev, data];
+        });
+        
+        if (!selectedChat.isChannel) {
           socket.emit("mark_seen", {
             messageId: data._id,
             senderId: data.senderId,
-            receiverId: user._id,
+            receiverId: user?._id,
           });
         }
-      });
+      }
+    };
 
-      socket.off("display_typing").on("display_typing", (data) => {
-        if (selectedChat && data.senderId === selectedChat._id) {
-          setIsTyping(true);
-          setTimeout(() => setIsTyping(false), 3000);
-        }
-      });
+    const handleReceiveChannelMessage = (data) => {
+      if (selectedChat.isChannel && data.channelId === selectedChat._id) {
+        setMessages((prev) => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          if (safePrev.some(msg => msg?._id === data._id)) return safePrev;
+          return [...safePrev, data];
+        });
+      }
+    };
 
-      socket.off("message_seen").on("message_seen", (data) => {
-        setMessages((prev) =>
-          (Array.isArray(prev) ? prev : []).map((msg) =>
-            msg._id === data.messageId ? { ...msg, status: "seen" } : msg
-          )
-        );
-      });
+    const handleDisplayTyping = (data) => {
+      if (data && data.senderId === selectedChat._id) {
+        setIsTyping(true);
+        setTimeout(() => setIsTyping(false), 3000);
+      }
+    };
 
-      return () => {
-        socket.off("receive_message");
-        socket.off("display_typing");
-        socket.off("message_seen");
-      };
-    }
-  }, [socket, selectedChat]);
+    const handleMessageSeen = (data) => {
+      if (!data?.messageId) return;
+      setMessages((prev) =>
+        (Array.isArray(prev) ? prev : []).map((msg) =>
+          msg?._id === data.messageId ? { ...msg, status: "seen" } : msg
+        )
+      );
+    };
+
+    socket.off("receive_message", handleReceiveMessage);
+    socket.off("receive_channel_message", handleReceiveChannelMessage);
+    socket.off("display_typing", handleDisplayTyping);
+    socket.off("message_seen", handleMessageSeen);
+
+    socket.on("receive_message", handleReceiveMessage);
+    socket.on("receive_channel_message", handleReceiveChannelMessage);
+    socket.on("display_typing", handleDisplayTyping);
+    socket.on("message_seen", handleMessageSeen);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("receive_channel_message", handleReceiveChannelMessage);
+      socket.off("display_typing", handleDisplayTyping);
+      socket.off("message_seen", handleMessageSeen);
+    };
+  }, [socket, selectedChat?._id, user?._id]);
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length > 0 && page === 2) { // Only scroll on initial load
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
+  }, [messages.length, page]);
 
   const handleSend = async (message, type = "text") => {
+    if (!selectedChat?._id || !user?._id) return;
+    
     const optimisticMessage = {
-      _id: Date.now().toString(),
-      senderId: user?._id,
-      receiverId: selectedChat?._id,
-      message,
+      _id: `temp-${Date.now()}`,
+      senderId: user._id,
+      receiverId: selectedChat._id,
+      message: message || "",
       type,
-      status: "sent",
+      status: "sending",
       createdAt: new Date().toISOString(),
     };
 
-    addMessage(optimisticMessage);
+    setMessages(prev => [...(Array.isArray(prev) ? prev : []), optimisticMessage]);
 
     try {
-      const { data } = await API.post("/messages", {
-        senderId: user?._id,
-        receiverId: selectedChat?._id,
-        message,
-        type,
-      });
-      // Replace optimistic message with actual data if needed, or just update status
-      socket.emit("send_message", data);
+      const endpoint = selectedChat.isChannel 
+        ? `/channels/${selectedChat._id}/messages` 
+        : "/messages";
+      
+      const payload = selectedChat.isChannel
+        ? { message, type }
+        : { senderId: user._id, receiverId: selectedChat._id, message, type };
+
+      const { data } = await API.post(endpoint, payload);
+      
+      if (data?._id) {
+        const normalizedData = {
+          ...data,
+          senderId: typeof data.senderId === 'object' ? data.senderId._id : data.senderId
+        };
+        setMessages(prev => 
+          (Array.isArray(prev) ? prev : []).map(msg => 
+            msg._id === optimisticMessage._id ? normalizedData : msg
+          )
+        );
+        if (!selectedChat.isChannel) {
+          socket.emit("send_message", normalizedData);
+        } else {
+          // Channel real-time messages could be implemented here with a room join
+          socket.emit("channel_message", { ...normalizedData, channelId: selectedChat._id });
+        }
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Send message error:", err);
       alert("Error sending message. Please try again.");
-      // Remove optimistic message on error if desired
       setMessages(prev => (Array.isArray(prev) ? prev : []).filter(msg => msg._id !== optimisticMessage._id));
     }
   };
 
   const handleTyping = () => {
-    socket.emit("typing", { senderId: user?._id, receiverId: selectedChat?._id });
+    if (socket && selectedChat?._id && user?._id) {
+      socket.emit("typing", { senderId: user._id, receiverId: selectedChat._id });
+    }
   };
 
-  const filteredMessages = (Array.isArray(messages) ? messages : []).filter(msg => 
-    msg.message?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-  );
+  const filteredMessages = (Array.isArray(messages) ? messages : []).filter(msg => {
+    const msgText = msg?.message || "";
+    return msgText.toLowerCase().includes((debouncedSearchTerm || "").toLowerCase());
+  });
 
   if (!selectedChat) {
     return (
@@ -193,8 +286,8 @@ const ChatWindow = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Video className="w-5 h-5 cursor-pointer hover:text-white" />
-          <Phone className="w-5 h-5 cursor-pointer hover:text-white" />
+          <Video className="w-5 h-5 cursor-pointer hover:text-white" onClick={() => callUser(selectedChat._id)} />
+          <Phone className="w-5 h-5 cursor-pointer hover:text-white" onClick={() => callUser(selectedChat._id)} />
           <div className="w-[1px] h-6 bg-whatsapp-sidebar mx-2"></div>
           <div className="relative">
             <MoreVertical 

@@ -21,13 +21,13 @@ const upload = multer({
 // Check file type
 function checkFileType(file, cb) {
   // Allowed ext
-  const filetypes = /jpeg|jpg|png|gif|mp3|wav/;
+  const filetypes = /jpeg|jpg|png|gif|mp3|wav|webm|ogg|m4a/;
   // Check ext
   const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
   // Check mime
   const mimetype = filetypes.test(file.mimetype);
 
-  if (mimetype && extname) {
+  if (mimetype || extname) {
     return cb(null, true);
   } else {
     cb("Error: Images and Audio Only!");

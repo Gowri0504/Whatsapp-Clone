@@ -44,7 +44,9 @@ const MessageBubble = ({ message, isOwn, searchTerm }) => {
         {isImage ? (
           <img src={message.message} alt="Shared content" className="rounded-md max-w-xs" />
         ) : isAudio ? (
-          <audio controls src={message.message} className="w-full"></audio>
+          <div className="flex items-center space-x-2 p-2 bg-whatsapp-dark rounded-md min-w-[200px]">
+            <audio controls src={message.message} className="h-8 w-full"></audio>
+          </div>
         ) : (
           <p className="pr-12">{getHighlightedText(message.message, searchTerm)}</p>
         )}

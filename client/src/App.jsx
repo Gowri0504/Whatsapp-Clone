@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import useAuthStore from "./store/useAuthStore";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import CallModal from "./components/CallModal";
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -20,6 +21,7 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Home />
+              <CallModal />
             </ProtectedRoute>
           }
         />

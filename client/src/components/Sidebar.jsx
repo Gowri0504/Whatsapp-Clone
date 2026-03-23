@@ -36,10 +36,13 @@ const Sidebar = () => {
   const [statusCaption, setStatusCaption] = useState("");
   const [activeTab, setActiveTab] = useState("chats");
   const [statuses, setStatuses] = useState([]);
+  const [channels, setChannels] = useState([]);
   const [profileData, setProfileData] = useState({
     username: user?.username || "",
     avatar: user?.avatar || "",
   });
+
+  const [viewingStatus, setViewingStatus] = useState(null);
 
   const navItems = [
     { id: "chats", icon: MessageCircle, label: "Chats" },
@@ -102,10 +105,11 @@ const Sidebar = () => {
     if (!statusImage) return;
     try {
       const { data } = await API.post("/status", {
-        imageUrl: statusImage,
+        mediaUrl: statusImage,
         caption: statusCaption,
+        type: "image"
       });
-      setStatuses([data, ...(statuses || [])]);
+      setStatuses([data, ...(Array.isArray(statuses) ? statuses : [])]);
       setShowStatusUpload(false);
       setStatusUploadImage("");
       setStatusCaption("");
@@ -115,28 +119,71 @@ const Sidebar = () => {
     }
   };
 
+  const handleJoinChannel = async (channelId) => {
+    try {
+      const { data } = await API.post(`/channels/${channelId}/join`);
+      setChannels((prev) =>
+        (Array.isArray(prev) ? prev : []).map((c) =>
+          c._id === channelId ? data : c
+        )
+      );
+      alert("Joined channel successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Error joining channel.");
+    }
+  };
+
   useEffect(() => {
     const fetchStatuses = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setStatuses([]);
+        return;
+      }
       try {
         const { data } = await API.get("/status");
-        setStatuses(data || []);
+        setStatuses(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
-        alert("Error fetching statuses. Please try again.");
+        setStatuses([]);
       }
     };
     if (activeTab === "status") fetchStatuses();
   }, [activeTab]);
 
   useEffect(() => {
+    const fetchChannels = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setChannels([]);
+        return;
+      }
+      try {
+        const { data } = await API.get("/channels");
+        setChannels(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+        setChannels([]);
+      }
+    };
+    if (activeTab === "channels") fetchChannels();
+  }, [activeTab]);
+
+  useEffect(() => {
     const fetchUsers = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setAllUsers([]);
+        return;
+      }
       setIsLoadingUsers(true);
       try {
         const { data } = await API.get(`/users?search=${debouncedSearch}`);
-        setAllUsers(data || []);
+        setAllUsers(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
-        alert("Error fetching users. Please try again.");
+        setAllUsers([]);
       } finally {
         setIsLoadingUsers(false);
       }
@@ -146,29 +193,33 @@ const Sidebar = () => {
 
   useEffect(() => {
     const fetchChats = async () => {
-      if (user) {
+      const token = localStorage.getItem("token");
+      if (user && token) {
         try {
           const { data } = await API.get(`/chats/${user._id}`);
-          setChats(data || []);
+          setChats(Array.isArray(data) ? data : []);
         } catch (err) {
           console.error(err);
-          alert("Error fetching chats. Please try again.");
+          setChats([]);
         }
+      } else {
+        setChats([]);
       }
     };
     fetchChats();
   }, [user, setChats]);
 
-  const filteredUsers = (Array.isArray(allUsers) ? allUsers : []).filter((u) =>
-    u.username?.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
+  const filteredUsers = (Array.isArray(allUsers) ? allUsers : []).filter((u) => {
+    const username = u?.username || "";
+    return username.toLowerCase().includes((debouncedSearch || "").toLowerCase());
+  });
 
   return (
     <div className="flex w-[40%] min-w-[350px] max-w-[500px] h-full bg-whatsapp-sidebar border-r border-whatsapp-header relative">
       {/* Left-most WhatsApp Navigation Sidebar */}
       <div className="flex flex-col items-center py-4 justify-between w-[64px] h-full bg-whatsapp-header border-r border-whatsapp-sidebar/30">
         <div className="flex flex-col space-y-4 w-full">
-          {navItems.map((item) => (
+          {(Array.isArray(navItems) ? navItems : []).map((item) => (
             <div
               key={item.id}
               onClick={() => setActiveTab(item.id)}
@@ -188,7 +239,7 @@ const Sidebar = () => {
         
         <div className="flex flex-col space-y-4 mb-2">
            <img
-            src={user?.avatar}
+            src={user?.avatar || ""}
             alt="Profile"
             className="w-8 h-8 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => setShowProfile(true)}
@@ -235,24 +286,48 @@ const Sidebar = () => {
             {isLoadingUsers ? (
               Array(5).fill(0).map((_, i) => <SkeletonLoader key={i} type="chatItem" />)
             ) : (
-              filteredUsers.map((u) => (
+              (Array.isArray(filteredUsers) ? filteredUsers : []).map((u) => (
                 <div
-                  key={u._id}
+                  key={u?._id}
                   onClick={() => startNewChat(u)}
                   className="flex items-center px-6 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200"
                 >
                   <img
-                    src={u.avatar}
-                    alt={u.username}
+                    src={u?.avatar || ""}
+                    alt={u?.username || ""}
                     className="w-12 h-12 rounded-full mr-4"
                   />
                   <div className="flex-1 border-b border-whatsapp-header pb-3">
-                    <h3 className="text-white font-medium">{u.username}</h3>
+                    <h3 className="text-white font-medium">{u?.username || "Unknown User"}</h3>
                     <p className="text-whatsapp-gray text-xs">Available</p>
                   </div>
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Status Viewer Modal */}
+      {viewingStatus && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+             <div className="flex items-center space-x-3">
+                <img src={viewingStatus?.userId?.avatar} className="w-10 h-10 rounded-full" />
+                <div>
+                   <h3 className="text-white font-medium">{viewingStatus?.userId?.username}</h3>
+                   <p className="text-whatsapp-gray text-xs">{new Date(viewingStatus?.createdAt).toLocaleTimeString()}</p>
+                </div>
+             </div>
+             <X className="w-8 h-8 text-white cursor-pointer" onClick={() => setViewingStatus(null)} />
+          </div>
+          <div className="w-full max-w-lg h-full flex flex-col items-center justify-center p-4">
+             <img src={viewingStatus?.mediaUrl} className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl" />
+             {viewingStatus?.caption && (
+                <p className="mt-6 text-white text-lg text-center bg-black/40 px-6 py-2 rounded-full">
+                   {viewingStatus.caption}
+                </p>
+             )}
           </div>
         </div>
       )}
@@ -274,14 +349,21 @@ const Sidebar = () => {
               />
               {showMenu && (
                 <div className="absolute right-0 top-8 w-48 bg-whatsapp-header shadow-xl rounded-lg py-2 z-[60]">
-                  {[
+                  {(Array.isArray([
                     { label: "New group", onClick: () => { setShowNewGroup(true); setShowMenu(false); } },
                     { label: "New community", onClick: () => { setActiveTab("communities"); setShowMenu(false); } },
                     { label: "Starred messages", onClick: () => setShowMenu(false) },
                     { label: "Select chats", onClick: () => setShowMenu(false) },
                     { label: "Settings", onClick: () => { setActiveTab("settings"); setShowMenu(false); } },
                     { label: "Log out", onClick: logout },
-                  ].map((item, i) => (
+                  ]) ? [
+                    { label: "New group", onClick: () => { setShowNewGroup(true); setShowMenu(false); } },
+                    { label: "New community", onClick: () => { setActiveTab("communities"); setShowMenu(false); } },
+                    { label: "Starred messages", onClick: () => setShowMenu(false) },
+                    { label: "Select chats", onClick: () => setShowMenu(false) },
+                    { label: "Settings", onClick: () => { setActiveTab("settings"); setShowMenu(false); } },
+                    { label: "Log out", onClick: logout },
+                  ] : []).map((item, i) => (
                     <div 
                       key={i} 
                       className="px-4 py-2 hover:bg-whatsapp-sidebar cursor-pointer text-whatsapp-light text-sm"
@@ -324,18 +406,18 @@ const Sidebar = () => {
                 <p className="text-whatsapp-green text-sm uppercase font-semibold mb-4">
                   Add members
                 </p>
-                {allUsers.map((u) => (
+                {(Array.isArray(allUsers) ? allUsers : []).map((u) => (
                   <div
-                    key={u._id}
+                    key={u?._id}
                     onClick={() => toggleSelectUser(u)}
                     className={`flex items-center px-4 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200 ${
-                      selectedUsers.some(user => user._id === u._id) ? "bg-whatsapp-header" : ""
+                      (Array.isArray(selectedUsers) ? selectedUsers : []).some(user => user?._id === u?._id) ? "bg-whatsapp-header" : ""
                     }`}
                   >
-                    <img src={u.avatar} className="w-10 h-10 rounded-full mr-4" />
+                    <img src={u?.avatar || ""} className="w-10 h-10 rounded-full mr-4" />
                     <div className="flex-1 border-b border-whatsapp-header pb-3 flex justify-between items-center">
-                      <h3 className="text-white font-medium">{u.username}</h3>
-                      {selectedUsers.some(user => user._id === u._id) && (
+                      <h3 className="text-white font-medium">{u?.username || "Unknown User"}</h3>
+                      {(Array.isArray(selectedUsers) ? selectedUsers : []).some(user => user?._id === u?._id) && (
                         <div className="w-5 h-5 bg-whatsapp-green rounded-full flex items-center justify-center">
                           <Plus className="w-3 h-3 text-whatsapp-dark rotate-45" />
                         </div>
@@ -372,7 +454,7 @@ const Sidebar = () => {
               {statusImage ? (
                 <img src={statusImage} className="max-h-[300px] rounded-lg mb-6" />
               ) : (
-                <div className="w-48 h-48 bg-whatsapp-header rounded-lg flex flex-center mb-6">
+                <div className="w-48 h-48 bg-whatsapp-header rounded-lg flex items-center justify-center mb-6">
                    <Plus className="w-12 h-12 text-whatsapp-gray" />
                 </div>
               )}
@@ -423,7 +505,7 @@ const Sidebar = () => {
           <div className="flex-1 overflow-y-auto bg-whatsapp-dark p-6 flex flex-col items-center">
             <div className="relative group mb-8">
               <img
-                src={profileData.avatar}
+                src={profileData?.avatar || ""}
                 alt="Profile"
                 className="w-48 h-48 rounded-full object-cover"
               />
@@ -443,7 +525,7 @@ const Sidebar = () => {
                   name="profile-username"
                   type="text"
                   className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
-                  value={profileData.username}
+                  value={profileData?.username || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, username: e.target.value })
                   }
@@ -463,7 +545,7 @@ const Sidebar = () => {
                   name="profile-avatar"
                   type="text"
                   className="w-full bg-transparent border-b border-whatsapp-gray/30 focus:border-whatsapp-green outline-none text-white pb-1"
-                  value={profileData.avatar}
+                  value={profileData?.avatar || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, avatar: e.target.value })
                   }
@@ -506,20 +588,20 @@ const Sidebar = () => {
               <p className="px-4 py-2 text-whatsapp-green text-sm uppercase font-semibold">
                 Users
               </p>
-              {filteredUsers.map((u) => (
+              {(Array.isArray(filteredUsers) ? filteredUsers : []).map((u) => (
                 <div
-                  key={u._id}
+                  key={u?._id}
                   onClick={() => setSelectedChat(u)}
                   className="flex items-center px-4 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200"
                 >
                   <img
-                    src={u.avatar}
-                    alt={u.username}
+                    src={u?.avatar || ""}
+                    alt={u?.username || ""}
                     className="w-12 h-12 rounded-full mr-4"
                   />
                   <div className="flex-1 border-b border-whatsapp-header pb-3">
                     <div className="flex justify-between">
-                      <h3 className="text-white font-medium">{u.username}</h3>
+                      <h3 className="text-white font-medium">{u?.username || "Unknown User"}</h3>
                     </div>
                   </div>
                 </div>
@@ -527,15 +609,15 @@ const Sidebar = () => {
             </div>
           ) : (
             <>
-              {chats.map((chat) => {
-                const otherParticipant = chat.participants.find(
-                  (p) => p._id !== user._id
+              {(Array.isArray(chats) ? chats : []).map((chat) => {
+                const otherParticipant = (Array.isArray(chat?.participants) ? chat.participants : []).find(
+                  (p) => p?._id !== user?._id
                 );
-                const isOnline = onlineUsers.includes(otherParticipant?._id);
+                const isOnline = (Array.isArray(onlineUsers) ? onlineUsers : []).includes(otherParticipant?._id);
 
                 return (
                   <div
-                    key={chat._id}
+                    key={chat?._id}
                     onClick={() => setSelectedChat(otherParticipant)}
                     className={`flex items-center px-4 py-3 cursor-pointer hover:bg-whatsapp-header transition duration-200 ${
                       selectedChat?._id === otherParticipant?._id
@@ -545,8 +627,8 @@ const Sidebar = () => {
                   >
                     <div className="relative">
                       <img
-                        src={otherParticipant?.avatar}
-                        alt={otherParticipant?.username}
+                        src={otherParticipant?.avatar || ""}
+                        alt={otherParticipant?.username || ""}
                         className="w-12 h-12 rounded-full mr-4"
                       />
                       {isOnline && (
@@ -556,10 +638,10 @@ const Sidebar = () => {
                     <div className="flex-1 border-b border-whatsapp-header pb-3">
                       <div className="flex justify-between items-baseline">
                         <h3 className="text-white font-medium">
-                          {otherParticipant?.username}
+                          {otherParticipant?.username || "Unknown Chat"}
                         </h3>
                         <span className="text-whatsapp-gray text-xs">
-                          {chat.lastMessage
+                          {chat?.lastMessage?.createdAt
                             ? new Date(chat.lastMessage.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -568,7 +650,7 @@ const Sidebar = () => {
                         </span>
                       </div>
                       <p className="text-whatsapp-gray text-sm truncate">
-                        {chat.lastMessage?.message || "No messages yet"}
+                        {chat?.lastMessage?.message || "No messages yet"}
                       </p>
                     </div>
                   </div>
@@ -588,7 +670,7 @@ const Sidebar = () => {
           <div className="flex flex-col h-full bg-whatsapp-sidebar">
              <div className="flex items-center px-4 py-4 cursor-pointer hover:bg-whatsapp-header">
                 <div className="relative">
-                  <img src={user?.avatar} className="w-12 h-12 rounded-full mr-4" />
+                  <img src={user?.avatar || ""} className="w-12 h-12 rounded-full mr-4" />
                   <div className="absolute bottom-0 right-4 bg-whatsapp-green rounded-full p-0.5 border-2 border-whatsapp-sidebar">
                     <Plus className="w-3 h-3 text-white" />
                   </div>
@@ -599,24 +681,94 @@ const Sidebar = () => {
                 </div>
              </div>
              <p className="px-4 py-4 text-whatsapp-gray text-sm uppercase font-semibold">Recent updates</p>
-             <div className="flex flex-col items-center justify-center mt-10 text-whatsapp-gray px-8 text-center">
-                <CircleDashed className="w-16 h-16 mb-4 opacity-20" />
-                <p className="text-sm">No status updates yet.</p>
+             <div className="flex-1 overflow-y-auto">
+                {(Array.isArray(statuses) ? statuses : []).length > 0 ? (
+                  statuses.map((s) => (
+                    <div 
+                      key={s?._id} 
+                      className="flex items-center px-4 py-3 cursor-pointer hover:bg-whatsapp-header transition"
+                      onClick={() => setViewingStatus(s)}
+                    >
+                      <div className="relative mr-4">
+                        <div className="w-14 h-14 rounded-full border-2 border-whatsapp-green p-0.5">
+                          <img src={s?.userId?.avatar || ""} className="w-full h-full rounded-full object-cover" />
+                        </div>
+                      </div>
+                      <div className="flex-1 border-b border-whatsapp-header pb-3">
+                        <h3 className="text-white font-medium">{s?.userId?.username || "Unknown"}</h3>
+                        <p className="text-whatsapp-gray text-xs">
+                          {s?.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center mt-10 text-whatsapp-gray px-8 text-center">
+                    <CircleDashed className="w-16 h-16 mb-4 opacity-20" />
+                    <p className="text-sm">No status updates yet.</p>
+                  </div>
+                )}
+             </div>
+          </div>
+        ) : activeTab === "channels" ? (
+          <div className="flex flex-col h-full bg-whatsapp-sidebar">
+             <div className="p-4">
+                <p className="text-whatsapp-green text-sm uppercase font-semibold mb-4">Featured Channels</p>
+                {(Array.isArray(channels) ? channels : []).length > 0 ? (
+                  channels.map((channel) => (
+                    <div key={channel?._id} className="flex items-center justify-between p-3 hover:bg-whatsapp-header rounded-lg transition group">
+                       <div 
+                        className="flex items-center cursor-pointer flex-1"
+                        onClick={() => {
+                          setSelectedChat({ ...channel, isChannel: true });
+                          setActiveTab("chats");
+                        }}
+                       >
+                          <img src={channel?.avatar} className="w-12 h-12 rounded-full mr-3" />
+                          <div>
+                             <h4 className="text-white font-medium">{channel?.name}</h4>
+                             <p className="text-whatsapp-gray text-xs truncate w-40">{channel?.description}</p>
+                          </div>
+                       </div>
+                       <button 
+                        onClick={() => handleJoinChannel(channel._id)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                          (Array.isArray(channel?.members) ? channel.members : []).includes(user?._id)
+                            ? "bg-whatsapp-green text-whatsapp-dark"
+                            : "bg-whatsapp-green/10 text-whatsapp-green hover:bg-whatsapp-green hover:text-whatsapp-dark"
+                        }`}
+                        disabled={(Array.isArray(channel?.members) ? channel.members : []).includes(user?._id)}
+                       >
+                          {(Array.isArray(channel?.members) ? channel.members : []).includes(user?._id) ? "Joined" : "Join"}
+                       </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-whatsapp-gray mt-10">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>No channels available</p>
+                  </div>
+                )}
              </div>
           </div>
         ) : activeTab === "settings" ? (
           <div className="flex flex-col h-full bg-whatsapp-sidebar">
-             {[
+             {(Array.isArray([
                { icon: User, label: "Account", sub: "Security, privacy" },
                { icon: MessageCircle, label: "Chats", sub: "Theme, wallpapers" },
                { icon: CircleDashed, label: "Notifications", sub: "Message, group" },
                { icon: Settings, label: "Help", sub: "Help center, contact us" }
-             ].map((item, i) => (
+             ]) ? [
+               { icon: User, label: "Account", sub: "Security, privacy" },
+               { icon: MessageCircle, label: "Chats", sub: "Theme, wallpapers" },
+               { icon: CircleDashed, label: "Notifications", sub: "Message, group" },
+               { icon: Settings, label: "Help", sub: "Help center, contact us" }
+             ] : []).map((item, i) => (
                 <div key={i} className="flex items-center px-6 py-4 cursor-pointer hover:bg-whatsapp-header border-b border-whatsapp-header/30">
                    <item.icon className="w-6 h-6 text-whatsapp-gray mr-6" />
                    <div>
-                      <h3 className="text-white font-medium">{item.label}</h3>
-                      <p className="text-whatsapp-gray text-xs">{item.sub}</p>
+                      <h3 className="text-white font-medium">{item?.label || ""}</h3>
+                      <p className="text-whatsapp-gray text-xs">{item?.sub || ""}</p>
                    </div>
                 </div>
              ))}

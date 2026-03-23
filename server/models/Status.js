@@ -7,7 +7,7 @@ const statusSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    imageUrl: {
+    mediaUrl: {
       type: String,
       required: true,
     },
@@ -15,9 +15,15 @@ const statusSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    expiresAt: {
+    type: {
+      type: String,
+      enum: ["image", "video"],
+      default: "image",
+    },
+    createdAt: {
       type: Date,
-      default: () => new Date(+new Date() + 24 * 60 * 60 * 1000), // Expires in 24 hours
+      default: Date.now,
+      index: { expires: "24h" }, // Auto-delete after 24 hours
     },
   },
   { timestamps: true }

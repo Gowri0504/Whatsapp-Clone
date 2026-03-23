@@ -46,8 +46,8 @@ app.use(express.static('public'));
 
 // Database connection
 connectDB().then(() => {
-  const seedDemoUsers = require("./config/seed");
-  seedDemoUsers();
+  const seedDemoData = require("./config/seed");
+  seedDemoData();
 });
 
 // Routes
@@ -55,6 +55,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/chats", require("./routes/chatRoutes"));
 app.use("/api/status", require("./routes/statusRoutes"));
+app.use("/api/channels", require("./routes/channelRoutes"));
 
 // Socket.IO
 const onlineUsersLocal = new Map();
@@ -82,6 +83,12 @@ io.on("connection", (socket) => {
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("receive_message", data);
     }
+  });
+
+  socket.on("channel_message", async (data) => {
+    // In a real app, users would join a room for each channel
+    // For now, we broadcast to all members online
+    io.emit("receive_channel_message", data);
   });
 
   socket.on("typing", async (data) => {
@@ -117,6 +124,48 @@ io.on("connection", (socket) => {
     }
     if (senderSocketId) {
       io.to(senderSocketId).emit("message_seen", data);
+    }
+  });
+
+  // Call Signaling
+  socket.on("call_user", async (data) => {
+    let receiverSocketId;
+    if (getIsRedisConnected()) {
+      receiverSocketId = await redisClient.hGet("onlineUsers", data.userToCall);
+    } else {
+      receiverSocketId = onlineUsersLocal.get(data.userToCall);
+    }
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("incoming_call", {
+        signal: data.signalData,
+        from: data.from,
+        name: data.name,
+        avatar: data.avatar
+      });
+    }
+  });
+
+  socket.on("answer_call", async (data) => {
+    let callerSocketId;
+    if (getIsRedisConnected()) {
+      callerSocketId = await redisClient.hGet("onlineUsers", data.to);
+    } else {
+      callerSocketId = onlineUsersLocal.get(data.to);
+    }
+    if (callerSocketId) {
+      io.to(callerSocketId).emit("call_accepted", data.signal);
+    }
+  });
+
+  socket.on("end_call", async (data) => {
+    let otherSocketId;
+    if (getIsRedisConnected()) {
+      otherSocketId = await redisClient.hGet("onlineUsers", data.to);
+    } else {
+      otherSocketId = onlineUsersLocal.get(data.to);
+    }
+    if (otherSocketId) {
+      io.to(otherSocketId).emit("call_ended");
     }
   });
 
